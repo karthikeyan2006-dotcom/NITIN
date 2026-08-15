@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>NITIN — Access Control</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --bg: #030710;
+      --surface: #070d1a;
+      --panel: #0b1527;
+      --border: rgba(0, 200, 255, 0.2);
+      --accent: #00c8ff;
+      --accent2: #00ffb3;
+      --accent3: #ff4d6d;
+      --mil: #ff2222;
+      --warn: #ffb703;
+      --text: #cde3f5;
+      --dim: #4a6380;
+    }
+
+    html,
+    body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 15px;
+      overflow: hidden
+    }
+
+    /* animated bg grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background: repeating-linear-gradient(0deg, rgba(0, 200, 255, .03) 0px, transparent 1px, transparent 48px, rgba(0, 200, 255, .03) 49px),
+        repeating-linear-gradient(90deg, rgba(0, 200, 255, .03) 0px, transparent 1px, transparent 48px, rgba(0, 200, 255, .03) 49px);
+      animation: gridMove 18s linear infinite
+    }
+
+    @keyframes gridMove {
+      0% {
+        transform: translate(0, 0)
+      }
+
+      100% {
+        transform: translate(48px, 48px)
+      }
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .07) 0, rgba(0, 0, 0, .07) 1px, transparent 1px, transparent 3px)
+    }
+
+    /* centered container */
+    #page {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px
+    }
+
+    /* logo */
+    .brand {
+      text-align: center;
+      margin-bottom: 32px
+    }
+
+    .brand-logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 36px;
+      font-weight: 900;
+      letter-spacing: 6px;
+      color: var(--accent);
+      text-shadow: 0 0 30px rgba(0, 200, 255, .7), 0 0 60px rgba(0, 200, 255, .3);
+      text-transform: uppercase
+    }
+
+    .brand-sub {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 4px;
+      color: var(--dim);
+      text-transform: uppercase;
+      margin-top: 4px
+    }
+
+    /* card */
+    .card {
+      background: rgba(7, 13, 26, .97);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      width: 100%;
+      max-width: 460px;
+      padding: 36px 40px;
+      box-shadow: 0 0 60px rgba(0, 200, 255, .08), 0 0 120px rgba(0, 200, 255, .04)
+    }
+
+    .card-tabs {
+      display: flex;
+      margin-bottom: 28px;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .ctab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      color: var(--dim);
+      border-bottom: 2px solid transparent;
+      transition: all .2s
+    }
+
+    .ctab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent)
+    }
+
+    /* form */
+    .form {
+      display: none
+    }
+
+    .form.active {
+      display: block
+    }
+
+    .field {
+      margin-bottom: 18px
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px
+    }
+
+    label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      color: var(--dim);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 600
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 11px 14px;
+      background: rgba(0, 200, 255, .04);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 3px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      outline: none;
+      transition: border-color .2s
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(0, 200, 255, .15)
+    }
+
+    input::placeholder {
+      color: var(--dim)
+    }
+
+    select option {
+      background: #0b1527;
+      color: var(--text)
+    }
+
+    /* role pills */
+    .role-picker {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 4px
+    }
+
+    .role-pill {
+      padding: 9px 6px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      cursor: pointer;
+      text-align: center;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--dim);
+      transition: all .2s;
+      user-select: none
+    }
+
+    .role-pill:hover {
+      border-color: var(--accent);
+      color: var(--accent)
+    }
+
+    .role-pill.selected-admin {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0, 200, 255, .08)
+    }
+
+    .role-pill.selected-command_post {
+      border-color: var(--accent2);
+      color: var(--accent2);
+      background: rgba(0, 255, 179, .08)
+    }
+
+    .role-pill.selected-viewer {
+      border-color: var(--warn);
+      color: var(--warn);
+      background: rgba(255, 183, 3, .08)
+    }
+
+    #state-field {
+      display: none
+    }
+
+    /* submit btn */
+    .submit-btn {
+      width: 100%;
+      padding: 13px;
+      background: rgba(0, 200, 255, .08);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-family: 'Orbitron', sans-serif;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 3px;
+      transition: all .25s;
+      margin-top: 8px;
+      position: relative;
+      overflow: hidden
+    }
+
+    .submit-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--accent);
+      opacity: 0;
+      transition: opacity .25s
+    }
+
+    .submit-btn:hover::before {
+      opacity: .12
+    }
+
+    .submit-btn:disabled {
+      opacity: .4;
+      cursor: not-allowed
+    }
+
+    /* error / success */
+    .msg-box {
+      padding: 10px 14px;
+      border-radius: 3px;
+      font-size: 13px;
+      margin-bottom: 14px;
+      display: none;
+      font-family: 'Share Tech Mono', monospace
+    }
+
+    .msg-box.err {
+      background: rgba(255, 77, 109, .1);
+      border: 1px solid rgba(255, 77, 109, .4);
+      color: #ff6b8a
+    }
+
+    .msg-box.ok {
+      background: rgba(0, 255, 179, .1);
+      border: 1px solid rgba(0, 255, 179, .4);
+      color: var(--accent2)
+    }
+
+    .msg-box.show {
+      display: block
+    }
+
+    /* decorative corner lines */
+    .card::before,
+    .card::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-color: var(--accent);
+      border-style: solid;
+      opacity: .5
+    }
+
+    .card {
+      position: relative
+    }
+
+    .card::before {
+      top: -1px;
+      left: -1px;
+      border-width: 2px 0 0 2px
+    }
+
+    .card::after {
+      bottom: -1px;
+      right: -1px;
+      border-width: 0 2px 2px 0
+    }
+
+    .divider {
+      text-align: center;
+      font-size: 11px;
+      color: var(--dim);
+      margin: 10px 0;
+      letter-spacing: 2px
+    }
+
+    /* spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(0, 200, 255, .3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="page">
+    <div class="brand">
+      <div class="brand-logo"><img src="images/logo.png" alt="logo" style="width: 100px;height: 100px;"></div>
+      <div class="brand-sub">NITIN-Naval Imagery and Target Identification Network</div>
+    </div>
+
+    <div class="card">
+      <div class="card-tabs">
+        <div class="ctab active" id="tab-login" onclick="showTab('login')">Sign In</div>
+        <div class="ctab" id="tab-signup" onclick="showTab('signup')">Register</div>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <div class="form active" id="form-login">
+        <div class="msg-box" id="login-msg"></div>
+        <div class="field">
+          <label>Username or Email</label>
+          <input type="text" id="l-identifier" placeholder="username or email" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="l-password" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+        <button class="submit-btn" id="btn-login" onclick="doLogin()">Access System</button>
+      </div>
+
+      <!-- SIGNUP FORM -->
+      <div class="form" id="form-signup">
+        <div class="msg-box" id="signup-msg"></div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Full Name</label>
+            <input type="text" id="s-name" placeholder="Full name" />
+          </div>
+          <div class="field">
+            <label>Username</label>
+            <input type="text" id="s-username" placeholder="username" />
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Email</label>
+            <input type="email" id="s-email" placeholder="email@domain.com" />
+          </div>
+          <div class="field">
+            <label>Date of Birth</label>
+            <input type="date" id="s-dob">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Position / Rank</label>
+          <input type="text" id="s-position" placeholder="e.g. Senior Analyst, Commander" />
+        </div>
+
+        <div class="field">
+          <label>Role</label>
+          <div class="role-picker">
+            <div class="role-pill" data-role="admin" onclick="selectRole('admin')">⚙ Admin</div>
+            <div class="role-pill" data-role="command_post" onclick="selectRole('command_post')">📡 Command Post</div>
+            <div class="role-pill" data-role="viewer" onclick="selectRole('viewer')">👁 Viewer</div>
+          </div>
+          <input type="hidden" id="s-role" value="" />
+        </div>
+
+        <div class="field" id="state-field">
+          <label>Command Post State</label>
+          <select id="s-state">
+            <option value="">— Select State —</option>
+            <option value="Tamil Nadu">Tamil Nadu</option>
+            <option value="Karnataka">Karnataka</option>
+            <option value="Kerala">Kerala</option>
+            <option value="Andhra Pradesh">Andhra Pradesh</option>
+            <option value="Telangana">Telangana</option>
+            <option value="Maharashtra">Maharashtra</option>
+            <option value="Gujarat">Gujarat</option>
+            <option value="Rajasthan">Rajasthan</option>
+            <option value="Delhi">Delhi</option>
+            <option value="Uttar Pradesh">Uttar Pradesh</option>
+            <option value="Bihar">Bihar</option>
+            <option value="West Bengal">West Bengal</option>
+            <option value="Odisha">Odisha</option>
+            <option value="Jharkhand">Jharkhand</option>
+            <option value="Chhattisgarh">Chhattisgarh</option>
+            <option value="Madhya Pradesh">Madhya Pradesh</option>
+            <option value="Haryana">Haryana</option>
+            <option value="Punjab">Punjab</option>
+            <option value="Himachal Pradesh">Himachal Pradesh</option>
+            <option value="Uttarakhand">Uttarakhand</option>
+            <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+            <option value="Ladakh">Ladakh</option>
+            <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+            <option value="Assam">Assam</option>
+            <option value="Meghalaya">Meghalaya</option>
+            <option value="Manipur">Manipur</option>
+            <option value="Mizoram">Mizoram</option>
+            <option value="Nagaland">Nagaland</option>
+            <option value="Sikkim">Sikkim</option>
+            <option value="Tripura">Tripura</option>
+            <option value="Goa">Goa</option>
+            <option value="Lakshadweep">Lakshadweep</option>
+            <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+            <option value="Puducherry">Puducherry</option>
+            <option value="Chandigarh">Chandigarh</option>
+            <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+            <option value="New Delhi">New Delhi</option>
+            <option value="International">International</option>
+            <option value="Indian Ocean Territory">Indian Ocean Territory</option>
+          </select>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Password</label>
+            <input type="password" id="s-password" placeholder="••••••••" autocomplete="new-password" />
+          </div>
+          <div class="field">
+            <label>Confirm Password</label>
+            <input type="password" id="s-confirm" placeholder="••••••••" autocomplete="new-password" />
+          </div>
+        </div>
+
+        <button class="submit-btn" id="btn-signup" onclick="doSignup()">Create Account</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Dynamic API base — works from any device on the network, not just localhost
+    const API = window.location.origin + '/api';
+    let selectedRole = '';
+
+    // ── TAB SWITCH ────────────────────────────────────────────────────────────────
+    function showTab(tab) {
+      document.getElementById('form-login').classList.toggle('active', tab === 'login');
+      document.getElementById('form-signup').classList.toggle('active', tab === 'signup');
+      document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+      document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+    }
+
+    // ── ROLE SELECT ───────────────────────────────────────────────────────────────
+    function selectRole(role) {
+      selectedRole = role;
+      document.getElementById('s-role').value = role;
+      document.querySelectorAll('.role-pill').forEach(p => {
+        p.className = 'role-pill';
+        if (p.dataset.role === role) p.classList.add('selected-' + role);
+      });
+      document.getElementById('state-field').style.display = role === 'command_post' ? 'block' : 'none';
+    }
+
+    // ── LOAD STATES ───────────────────────────────────────────────────────────────
+    async function loadStates() {
+      try {
+        const r = await fetch(`${API}/auth/states`);
+        const states = await r.json();
+        const sel = document.getElementById('s-state');
+        states.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
+      } catch (e) { }
+    }
+
+    // ── SHOW MSG ──────────────────────────────────────────────────────────────────
+    function showMsg(id, msg, type = 'err') {
+      const el = document.getElementById(id);
+      el.textContent = msg; el.className = 'msg-box ' + type + ' show';
+    }
+    function hideMsg(id) { document.getElementById(id).className = 'msg-box'; }
+
+    // ── LOGIN ─────────────────────────────────────────────────────────────────────
+    async function doLogin() {
+      hideMsg('login-msg');
+      const identifier = document.getElementById('l-identifier').value.trim();
+      const password = document.getElementById('l-password').value;
+      if (!identifier || !password) { showMsg('login-msg', 'Please enter username and password.'); return; }
+      const btn = document.getElementById('btn-login');
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Authenticating...';
+      try {
+        const r = await fetch(`${API}/auth/login`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: identifier, password }), credentials: 'include'
+        });
+        const d = await r.json();
+        if (!r.ok) { showMsg('login-msg', d.error || 'Login failed.'); return; }
+        localStorage.setItem('nitin_token', d.token);
+        localStorage.setItem('nitin_user', JSON.stringify(d.user));
+        window.location.href = '/dashboard';
+      } catch (e) { showMsg('login-msg', 'Connection error. Is the server running?'); }
+      finally { btn.disabled = false; btn.innerHTML = 'Access System'; }
+    }
+
+    // ── SIGNUP ────────────────────────────────────────────────────────────────────
+    async function doSignup() {
+      hideMsg('signup-msg');
+      const name = document.getElementById('s-name').value.trim();
+      const username = document.getElementById('s-username').value.trim();
+      const email = document.getElementById('s-email').value.trim();
+      const dob = document.getElementById('s-dob').value;
+      const position = document.getElementById('s-position').value.trim();
+      const role = selectedRole;
+      const state = document.getElementById('s-state').value;
+      const password = document.getElementById('s-password').value;
+      const confirm = document.getElementById('s-confirm').value;
+
+      if (!name || !username || !email || !dob || !role || !password) { showMsg('signup-msg', 'Please fill all required fields and select a role.'); return; }
+      if (password !== confirm) { showMsg('signup-msg', 'Passwords do not match.'); return; }
+      if (password.length < 6) { showMsg('signup-msg', 'Password must be at least 6 characters.'); return; }
+      if (role === 'command_post' && !state) { showMsg('signup-msg', 'Please select your command post state.'); return; }
+
+      const btn = document.getElementById('btn-signup');
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Creating account...';
+      try {
+        const r = await fetch(`${API}/auth/signup`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, username, email, dob, position, role, state, password })
+        });
+        const d = await r.json();
+        if (!r.ok) { showMsg('signup-msg', d.error || 'Signup failed.'); return; }
+        showMsg('signup-msg', '✓ Account created! Switching to login...', 'ok');
+        setTimeout(() => showTab('login'), 1800);
+      } catch (e) { showMsg('signup-msg', 'Connection error.'); }
+      finally { btn.disabled = false; btn.innerHTML = 'Create Account'; }
+    }
+
+    // ── ENTER KEY ─────────────────────────────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        if (document.getElementById('form-login').classList.contains('active')) doLogin();
+        else doSignup();
+      }
+    });
+
+    // ── INIT ──────────────────────────────────────────────────────────────────────
+    loadStates();
+
+    // Redirect if already logged in
+    const tok = localStorage.getItem('nitin_token');
+    if (tok) {
+      fetch(`${API}/auth/me`, { headers: { 'X-Auth-Token': tok } }).then(r => {
+        if (r.ok) window.location.href = '/dashboard';
+      }).catch(() => { });
+    }
+  </script>
+</body>
+
+</html>

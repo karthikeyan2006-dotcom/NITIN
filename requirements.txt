@@ -1,0 +1,13 @@
+# NITIN — Required packages
+# Install with: pip install -r requirements.txt
+
+flask>=3.0.0
+flask-cors>=4.0.0
+pymongo>=4.6.0
+
+# Already in your environment (pipeline):
+# torch
+# timm
+# torchvision
+# Pillow
+# ultralytics

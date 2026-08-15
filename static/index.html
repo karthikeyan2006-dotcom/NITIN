@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>NITIN — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#040810;--surface:#070d1a;--panel:#0b1527;
+  --border:rgba(0,200,255,0.18);--accent:#00c8ff;--accent2:#00ffb3;
+  --accent3:#ff4d6d;--mil:#ff2222;--warn:#ffb703;--text:#cde3f5;--dim:#4a6380;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;font-size:15px}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.08) 0px,rgba(0,0,0,.08) 1px,transparent 1px,transparent 3px)}
+
+/* ── LAYOUT ── */
+#root{display:grid;height:100vh;
+  grid-template-rows:56px 1fr;
+  grid-template-columns:300px 1fr 320px;
+  grid-template-areas:"topbar topbar topbar" "left main right"}
+
+/* ── TOPBAR ── */
+#topbar{grid-area:topbar;display:flex;align-items:center;gap:20px;padding:0 20px;
+  background:var(--surface);border-bottom:1px solid var(--border);position:relative;z-index:200}
+#topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  background-size:200% 100%;animation:scanH 4s linear infinite}
+@keyframes scanH{0%{background-position:-100% 0}100%{background-position:200% 0}}
+
+.logo-mark{font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;letter-spacing:4px;
+  color:var(--accent);text-shadow:0 0 20px rgba(0,200,255,.6);white-space:nowrap}
+.logo-sub{font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-top:2px}
+.top-stat{display:flex;flex-direction:column;align-items:center;gap:2px;padding:0 14px;border-left:1px solid var(--border)}
+.top-stat-val{font-family:'Orbitron',sans-serif;font-size:15px;font-weight:700;color:var(--accent2)}
+.top-stat-lbl{font-size:9px;color:var(--dim);letter-spacing:1px;text-transform:uppercase}
+.conn-badge{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:1px;text-transform:uppercase}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim)}
+.dot.ok{background:var(--accent2);box-shadow:0 0 8px var(--accent2);animation:blink 2s ease-in-out infinite}
+.dot.err{background:var(--accent3)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* User info area */
+#user-info{display:flex;align-items:center;gap:10px;padding:0 14px;border-left:1px solid var(--border);cursor:pointer}
+.user-avatar{width:32px;height:32px;border-radius:50%;border:1px solid var(--accent);
+  display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;
+  font-size:12px;font-weight:800;color:var(--accent);background:rgba(0,200,255,.08)}
+.user-name{font-size:12px;font-weight:600;color:var(--text)}
+.user-role{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace}
+.role-tag-admin{color:var(--accent)}
+.role-tag-command_post{color:var(--accent2)}
+.role-tag-viewer{color:var(--warn)}
+
+#msg-bell{position:relative;cursor:pointer;padding:8px;border:1px solid var(--border);border-radius:3px;
+  font-size:16px;transition:border-color .2s}
+#msg-bell:hover{border-color:var(--accent)}
+#bell-badge{position:absolute;top:-4px;right:-4px;background:var(--accent3);color:#fff;
+  font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;
+  display:none;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif}
+#bell-badge.show{display:flex}
+
+#sys-time{font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--accent);
+  padding:0 14px;border-left:1px solid var(--border);white-space:nowrap}
+
+/* ── LEFT PANEL ── */
+#left-panel{grid-area:left;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.panel-hdr{padding:12px 16px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.panel-hdr-title{font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;color:var(--accent);text-transform:uppercase}
+
+#pipeline-section{padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:9px 14px;
+  border-radius:3px;font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;cursor:pointer;border:1px solid currentColor;background:transparent;
+  transition:all .25s;position:relative;overflow:hidden}
+.btn::before{content:'';position:absolute;inset:0;opacity:0;background:currentColor;transition:opacity .25s}
+.btn:hover::before{opacity:.12}.btn:active::before{opacity:.22}.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-primary{color:var(--accent)}.btn-green{color:var(--accent2)}.btn-red{color:var(--accent3)}.btn-warn{color:var(--warn)}
+.btn+.btn{margin-top:7px}
+
+#progress-wrap{display:none;margin-top:10px}
+.prog-label{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-bottom:5px}
+.prog-bar-bg{height:4px;background:rgba(0,200,255,.1);border-radius:2px;overflow:hidden}
+.prog-bar{height:100%;background:var(--accent);border-radius:2px;transition:width .4s;width:0%;box-shadow:0 0 8px var(--accent)}
+#prog-file{font-size:9px;color:var(--dim);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+#log-box{flex:1;overflow-y:auto;padding:8px 12px;font-family:'Share Tech Mono',monospace;font-size:10px;line-height:1.6;color:var(--dim)}
+#log-box::-webkit-scrollbar{width:3px}#log-box::-webkit-scrollbar-thumb{background:var(--border)}
+.log-ok{color:var(--accent2)}.log-err{color:var(--accent3)}.log-info{color:var(--accent)}
+
+#date-section{padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0}
+#date-select{width:100%;padding:8px 10px;background:rgba(0,200,255,.04);border:1px solid var(--border);
+  color:var(--text);border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:11px;cursor:pointer;outline:none}
+#date-select:focus{border-color:var(--accent)}
+
+/* ── MAIN ── */
+#main-panel{grid-area:main;display:flex;flex-direction:column;overflow:hidden}
+#tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.tab{padding:12px 16px;font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;cursor:pointer;color:var(--dim);border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab:hover:not(.active){color:var(--text)}
+.tab.alert-tab{color:#ffcc00}.tab.alert-tab.active{color:#ffcc00;border-bottom-color:#ffcc00}
+.tab.msg-tab{color:var(--accent2)}.tab.msg-tab.active{color:var(--accent2);border-bottom-color:var(--accent2)}
+.tab-badge{display:inline-flex;align-items:center;justify-content:center;
+  background:var(--accent3);color:#fff;font-size:8px;border-radius:50%;
+  width:14px;height:14px;margin-left:4px;font-family:'Orbitron',sans-serif}
+
+/* MAP */
+#map-wrap{flex:1;position:relative;display:none}
+#map-wrap.active{display:block}
+#map{width:100%;height:100%}
+#map-overlay{position:absolute;top:14px;right:14px;z-index:500;background:rgba(4,8,16,.92);
+  border:1px solid var(--border);border-radius:4px;padding:10px 14px;min-width:160px;backdrop-filter:blur(8px)}
+.ov-title{font-family:'Orbitron',sans-serif;font-size:9px;color:var(--accent);letter-spacing:2px;margin-bottom:5px;text-transform:uppercase}
+#ov-count{font-family:'Orbitron',sans-serif;font-size:26px;font-weight:800;color:var(--accent);line-height:1}
+#map-add{position:absolute;bottom:14px;left:14px;z-index:500;background:rgba(4,8,16,.92);
+  border:1px solid var(--border);border-radius:4px;padding:12px;width:250px;backdrop-filter:blur(8px)}
+.map-add-title{font-family:'Orbitron',sans-serif;font-size:9px;color:var(--accent2);letter-spacing:2px;margin-bottom:8px;text-transform:uppercase}
+.inp-row{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px}
+.inp{width:100%;padding:7px 9px;background:rgba(0,200,255,.05);border:1px solid var(--border);
+  color:var(--text);border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:11px;outline:none}
+.inp:focus{border-color:var(--accent)}.inp::placeholder{color:var(--dim)}
+
+/* CHART */
+#chart-wrap{flex:1;display:none;padding:20px;overflow-y:auto}
+#chart-wrap.active{display:flex;flex-direction:column;gap:16px}
+.chart-card{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:18px}
+.chart-title{font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:14px}
+
+/* RECORDS */
+#records-wrap{flex:1;display:none;overflow-y:auto}
+#records-wrap.active{display:flex;flex-direction:column}
+.rec-table{width:100%;border-collapse:collapse;font-size:12px}
+.rec-table th{padding:9px 12px;text-align:left;font-family:'Orbitron',sans-serif;font-size:8px;
+  letter-spacing:2px;color:var(--dim);text-transform:uppercase;background:var(--surface);
+  border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
+.rec-table td{padding:8px 12px;border-bottom:1px solid rgba(0,200,255,.07);vertical-align:middle}
+.rec-table tr:hover td{background:rgba(0,200,255,.04)}
+.rec-table tr.mil-row td{background:rgba(255,34,34,.05)!important}
+.badge{display:inline-block;padding:2px 7px;border-radius:2px;font-size:10px;font-weight:600;border:1px solid}
+.conf-high{color:var(--accent2);border-color:rgba(0,255,179,.3);background:rgba(0,255,179,.06)}
+.conf-med{color:var(--warn);border-color:rgba(255,183,3,.3);background:rgba(255,183,3,.06)}
+.conf-low{color:var(--accent3);border-color:rgba(255,77,109,.3);background:rgba(255,77,109,.06)}
+.badge-mil{color:#ff2222;border-color:rgba(255,34,34,.5);background:rgba(255,34,34,.1);
+  animation:milPulse 1.5s ease-in-out infinite}
+@keyframes milPulse{0%,100%{box-shadow:0 0 6px rgba(255,34,34,.3)}50%{box-shadow:0 0 16px rgba(255,34,34,.7)}}
+.ship-thumb{width:56px;height:42px;object-fit:cover;border-radius:3px;border:1px solid var(--border);cursor:pointer;transition:transform .2s}
+.ship-thumb:hover{transform:scale(1.1);border-color:var(--accent)}
+.ship-thumb-ph{width:56px;height:42px;border-radius:3px;border:1px dashed var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--dim)}
+
+/* ALERT */
+#alert-wrap{flex:1;display:none;position:relative}
+#alert-wrap.active{display:block}
+#alert-map{width:100%;height:100%}
+#alert-legend{position:absolute;top:12px;right:12px;z-index:500;background:rgba(4,8,16,.93);
+  border:1px solid rgba(255,204,0,.3);border-radius:4px;padding:10px 14px;backdrop-filter:blur(8px)}
+.al-title{font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:2px;color:#ffcc00;text-transform:uppercase;margin-bottom:8px}
+.al-row{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--dim);margin-bottom:5px}
+.al-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+#alert-count-badge{position:absolute;top:12px;left:12px;z-index:500;background:rgba(4,8,16,.93);
+  border:1px solid rgba(255,34,34,.4);border-radius:4px;padding:8px 14px;backdrop-filter:blur(8px)}
+.acb-title{font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:2px;color:var(--mil);text-transform:uppercase;margin-bottom:3px}
+#alert-sent-count{font-family:'Orbitron',sans-serif;font-size:24px;font-weight:800;color:var(--mil)}
+
+/* MESSAGING */
+#msg-wrap{flex:1;display:none;flex-direction:column;overflow:hidden}
+#msg-wrap.active{display:flex}
+.msg-layout{display:grid;grid-template-columns:220px 1fr;height:100%;overflow:hidden}
+.msg-sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.msg-sidebar-tabs{display:flex;border-bottom:1px solid var(--border)}
+.mst{flex:1;padding:8px 4px;text-align:center;font-family:'Orbitron',sans-serif;font-size:8px;
+  font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;color:var(--dim);
+  border-bottom:2px solid transparent;transition:all .2s}
+.mst.active{color:var(--accent2);border-bottom-color:var(--accent2)}
+.msg-list{flex:1;overflow-y:auto;padding:6px}
+.msg-list::-webkit-scrollbar{width:3px}
+.msg-item{padding:10px 10px;border:1px solid var(--border);border-radius:3px;margin-bottom:5px;
+  cursor:pointer;transition:all .2s;background:var(--panel)}
+.msg-item:hover,.msg-item.active{border-color:rgba(0,200,255,.4);background:rgba(0,200,255,.06)}
+.msg-item.unread{border-left:3px solid var(--accent2)}
+.msg-item-from{font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;color:var(--accent2);margin-bottom:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.msg-item-sub{font-size:10px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.msg-item-time{font-size:9px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:2px}
+/* compose / read area */
+.msg-main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.msg-main-hdr{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.msg-main-title{font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:2px;color:var(--accent)}
+.msg-body-area{flex:1;overflow-y:auto;padding:16px}
+/* read view */
+#msg-read-view{display:none}
+#msg-read-view.active{display:block}
+.mr-from{font-family:'Orbitron',sans-serif;font-size:13px;color:var(--accent2);margin-bottom:8px}
+.mr-meta{font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:14px;line-height:1.7}
+.mr-body{font-size:14px;color:var(--text);line-height:1.7;white-space:pre-wrap;
+  background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:14px}
+/* compose */
+#msg-compose{display:none}
+#msg-compose.active{display:flex;flex-direction:column;gap:10px}
+.comp-label{font-size:10px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;
+  font-family:'Orbitron',sans-serif;font-weight:600;margin-bottom:4px;display:block}
+.comp-input{width:100%;padding:9px 12px;background:rgba(0,200,255,.04);border:1px solid var(--border);
+  color:var(--text);border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:12px;outline:none}
+.comp-input:focus{border-color:var(--accent)}
+#comp-to{font-family:'Rajdhani',sans-serif;font-size:13px}
+#comp-body{height:160px;resize:vertical;font-family:'Rajdhani',sans-serif;font-size:14px}
+.comp-row{display:flex;gap:8px}
+.comp-chk-item{display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;padding:3px 0}
+.comp-chk-item input{width:auto}
+.empty-msg{text-align:center;padding:40px;color:var(--dim);font-size:12px;line-height:2}
+
+/* ADMIN USERS TAB */
+#users-wrap{flex:1;display:none;overflow-y:auto}
+#users-wrap.active{display:flex;flex-direction:column}
+
+/* RIGHT PANEL */
+#right-panel{grid-area:right;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#ship-list{flex:1;overflow-y:auto;padding:6px}
+#ship-list::-webkit-scrollbar{width:3px}
+.ship-card{background:var(--panel);border:1px solid var(--border);border-radius:4px;
+  padding:10px 12px;margin-bottom:7px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.ship-card::before{content:'';position:absolute;left:0;top:0;width:3px;height:100%;background:var(--accent);opacity:0;transition:opacity .2s}
+.ship-card:hover{border-color:rgba(0,200,255,.4);transform:translateX(3px)}
+.ship-card:hover::before{opacity:1}
+.ship-card.db-record::before{background:var(--accent2)}
+.ship-card.mil-card{border-color:rgba(255,34,34,.4)!important}
+.ship-card.mil-card::before{background:var(--mil)!important}
+.sc-name{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;color:var(--accent);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-name.db{color:var(--accent2)}.sc-name.mil{color:var(--mil)!important}
+.sc-row{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:2px}
+.sc-val{color:var(--text);font-family:'Share Tech Mono',monospace;font-size:10px}
+.empty-state{text-align:center;padding:30px 16px;color:var(--dim);font-size:11px;line-height:1.8}
+.mil-badge-sm{display:inline-flex;align-items:center;gap:3px;font-size:9px;color:var(--mil);
+  font-family:'Orbitron',sans-serif;font-weight:700;background:rgba(255,34,34,.1);
+  border:1px solid rgba(255,34,34,.3);padding:1px 5px;border-radius:2px;margin-top:3px}
+
+/* Leaflet custom */
+.leaflet-popup-content-wrapper{background:rgba(4,8,16,.97)!important;border:1px solid var(--accent)!important;
+  border-radius:4px!important;font-family:'Rajdhani',sans-serif!important;color:var(--text)!important}
+.leaflet-popup-tip{background:rgba(4,8,16,.97)!important}
+.leaflet-popup-close-button{color:var(--accent)!important}
+.pop-name{font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;color:var(--accent2);
+  margin-bottom:7px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+.pop-name.mil{color:var(--mil)!important}
+.pop-row{display:flex;gap:8px;font-size:11px;margin-top:3px}
+.pop-key{color:var(--dim);width:100px;flex-shrink:0}
+.pop-val{color:var(--text);font-family:'Share Tech Mono',monospace;font-size:11px}
+.pulse-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent2);
+  box-shadow:0 0 6px var(--accent2);animation:blink 1.5s ease-in-out infinite;margin-right:4px}
+.pulse-dot.mil{background:var(--mil);box-shadow:0 0 6px var(--mil)}
+
+/* Lightbox */
+#lightbox{display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.93);
+  align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+#lightbox.open{display:flex}
+#lightbox-img{max-width:90vw;max-height:84vh;border:2px solid var(--accent);border-radius:4px}
+#lightbox-close{position:absolute;top:18px;right:24px;font-size:26px;cursor:pointer;
+  color:var(--accent);background:none;border:none;font-family:'Orbitron',sans-serif;font-weight:900}
+#lightbox-caption{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+  font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text);
+  background:rgba(4,8,16,.9);padding:7px 18px;border-radius:3px;border:1px solid var(--border);white-space:nowrap}
+
+/* Alert modal */
+#alert-modal{display:none;position:fixed;inset:0;z-index:11000;background:rgba(0,0,0,.86);
+  align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+#alert-modal.open{display:flex}
+.am-box{background:var(--surface);border:1px solid rgba(255,204,0,.4);border-radius:6px;
+  padding:28px 32px;min-width:340px;max-width:420px;text-align:center;box-shadow:0 0 50px rgba(255,204,0,.12)}
+.am-icon{font-size:32px;margin-bottom:10px}
+.am-title{font-family:'Orbitron',sans-serif;font-size:12px;font-weight:800;letter-spacing:2px;color:#ffcc00;margin-bottom:8px;text-transform:uppercase}
+.am-state{font-size:11px;color:var(--dim);margin-bottom:6px;font-family:'Share Tech Mono',monospace}
+.am-msg{font-size:15px;color:var(--text);margin-bottom:20px;line-height:1.5;font-weight:600}
+.am-btns{display:flex;gap:12px;justify-content:center}
+.am-btn{padding:9px 24px;border-radius:3px;font-family:'Orbitron',sans-serif;font-size:10px;
+  font-weight:700;letter-spacing:2px;cursor:pointer;border:1px solid;background:transparent;text-transform:uppercase;transition:all .2s}
+.am-btn-yes{color:#ff2222;border-color:#ff2222}.am-btn-yes:hover{background:rgba(255,34,34,.15)}
+.am-btn-no{color:var(--dim);border-color:var(--dim)}.am-btn-no:hover{background:rgba(255,255,255,.06)}
+#am-sent{display:none;text-align:center}
+.am-sent-icon{font-size:44px;margin-bottom:10px;animation:sentPop .4s ease-out}
+@keyframes sentPop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+.am-sent-title{font-family:'Orbitron',sans-serif;font-size:14px;font-weight:900;color:var(--accent2);letter-spacing:3px;text-transform:uppercase;margin-bottom:6px}
+.am-sent-sub{font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace}
+.am-close-btn{margin-top:16px;padding:8px 20px;border-radius:3px;font-family:'Orbitron',sans-serif;
+  font-size:9px;font-weight:700;letter-spacing:2px;cursor:pointer;border:1px solid var(--accent2);
+  color:var(--accent2);background:transparent;text-transform:uppercase}
+
+/* user management table */
+.usr-table{width:100%;border-collapse:collapse;font-size:12px}
+.usr-table th{padding:9px 12px;text-align:left;font-family:'Orbitron',sans-serif;font-size:8px;
+  letter-spacing:2px;color:var(--dim);text-transform:uppercase;background:var(--surface);
+  border-bottom:1px solid var(--border);position:sticky;top:0;z-index:5}
+.usr-table td{padding:8px 12px;border-bottom:1px solid rgba(0,200,255,.07)}
+.usr-table tr:hover td{background:rgba(0,200,255,.04)}
+.role-b{display:inline-block;padding:2px 7px;border-radius:2px;font-size:9px;font-weight:700;border:1px solid;font-family:'Orbitron',sans-serif;letter-spacing:1px}
+.rb-admin{color:var(--accent);border-color:rgba(0,200,255,.4);background:rgba(0,200,255,.08)}
+.rb-command_post{color:var(--accent2);border-color:rgba(0,255,179,.4);background:rgba(0,255,179,.08)}
+.rb-viewer{color:var(--warn);border-color:rgba(255,183,3,.4);background:rgba(255,183,3,.08)}
+.toggle-btn{padding:3px 10px;border-radius:2px;font-size:9px;cursor:pointer;
+  border:1px solid;background:transparent;font-family:'Orbitron',sans-serif;font-weight:700;letter-spacing:1px}
+.tb-active{color:var(--accent3);border-color:var(--accent3)}.tb-active:hover{background:rgba(255,77,109,.1)}
+.tb-inactive{color:var(--accent2);border-color:var(--accent2)}.tb-inactive:hover{background:rgba(0,255,179,.1)}
+
+/* viewer notice */
+#viewer-notice{display:none;flex:1;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+#viewer-notice.show{display:flex}
+.vn-icon{font-size:48px}
+.vn-text{font-family:'Orbitron',sans-serif;font-size:12px;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
+
+/* spinner */
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(0,200,255,.3);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="root">
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div>
+    <div class="logo-mark"><img src="images/logo.png" style="width: 55px;height:55px;"></div>
+  </div>
+  <div class="top-stat">
+    <span class="top-stat-val" id="t-ships">—</span>
+    <span class="top-stat-lbl">Ships</span>
+  </div>
+  <div class="top-stat">
+    <span class="top-stat-val" id="t-mil" style="color:var(--mil)">0</span>
+    <span class="top-stat-lbl">⚠ Military</span>
+  </div>
+  <div class="conn-badge">
+    <div class="dot" id="dot-mongo"></div><span>DB</span>
+    &nbsp;|&nbsp;
+    <div class="dot" id="dot-model"></div><span>Model</span>
+  </div>
+  <div id="msg-bell" onclick="switchTab('messages')" title="Messages">
+    📨
+    <div class="bell-badge" id="bell-badge"></div>
+  </div>
+  <div id="user-info" onclick="showUserMenu()">
+    <div class="user-avatar" id="user-avatar">?</div>
+    <div>
+      <div class="user-name" id="user-name-top">—</div>
+      <div class="user-role" id="user-role-top">—</div>
+    </div>
+  </div>
+  <div id="sys-time">00:00:00</div>
+</div>
+
+<!-- LEFT PANEL -->
+<div id="left-panel">
+  <div class="panel-hdr"><span>⚙</span><span class="panel-hdr-title">Pipeline Control</span></div>
+  <div id="pipeline-section">
+    <!-- Shown only to admin -->
+    <div id="admin-pipeline-btns">
+      <button class="btn btn-warn" id="btn-load" onclick="loadModels()">▲ Load AI Models</button>
+      <button class="btn btn-green" id="btn-run" onclick="runPipeline()" disabled>▶ Run Detection</button>
+    </div>
+    <button class="btn btn-primary" onclick="refreshAll()" style="margin-top:7px">↺ Refresh Data</button>
+    <div id="progress-wrap">
+      <div class="prog-label"><span>Processing</span><span id="prog-pct">0%</span></div>
+      <div class="prog-bar-bg"><div class="prog-bar" id="prog-bar"></div></div>
+      <div id="prog-file">—</div>
+    </div>
+    <!-- Viewer notice for pipeline -->
+    <div id="viewer-pipeline-msg" style="display:none;margin-top:10px;padding:8px;border:1px solid rgba(255,183,3,.3);border-radius:3px;font-size:10px;color:var(--warn);font-family:'Share Tech Mono',monospace">
+      👁 View-only access.<br/>Detection is admin-only.
+    </div>
+  </div>
+  <div class="panel-hdr"><span>📋</span><span class="panel-hdr-title">System Log</span></div>
+  <div id="log-box"></div>
+  <div id="date-section">
+    <div style="font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:8px">Filter by Date</div>
+    <select id="date-select" onchange="loadRecords()">
+      <option value="">— Select Date —</option>
+    </select>
+  </div>
+</div>
+
+<!-- MAIN PANEL -->
+<div id="main-panel">
+  <div id="tabs">
+    <div class="tab active" onclick="switchTab('map')">🗺 Map</div>
+    <div class="tab" onclick="switchTab('chart')">📊 Analytics</div>
+    <div class="tab" onclick="switchTab('records')">📂 Records</div>
+    <div class="tab alert-tab" onclick="switchTab('alert')">🚨 Alert</div>
+    <div class="tab msg-tab" id="tab-messages" onclick="switchTab('messages')">
+      📨 Messages<span class="tab-badge" id="msg-tab-badge" style="display:none">0</span>
+    </div>
+    <div class="tab" id="tab-users" onclick="switchTab('users')" style="display:none">👥 Users</div>
+  </div>
+
+  <!-- MAP -->
+  <div id="map-wrap" class="active">
+    <div id="map"></div>
+    <div id="map-overlay">
+      <div class="ov-title">Tracked Ships</div>
+      <div id="ov-count">0</div>
+      <div style="font-size:9px;color:var(--dim);margin-top:2px">on map</div>
+    </div>
+    <div id="map-add">
+      <div class="map-add-title">⊕ Manual Marker</div>
+      <div class="inp-row">
+        <input class="inp" id="m-lat" placeholder="Latitude" type="number" step="0.0001"/>
+        <input class="inp" id="m-lon" placeholder="Longitude" type="number" step="0.0001"/>
+      </div>
+      <input class="inp" id="m-name" placeholder="Ship Name" style="margin-bottom:7px"/>
+      <input class="inp" id="m-type" placeholder="Ship Type" style="margin-bottom:7px"/>
+      <button class="btn btn-green" style="margin-top:4px" onclick="addManualMarker()">+ Add to Map</button>
+    </div>
+  </div>
+
+  <!-- CHART -->
+  <div id="chart-wrap">
+    <div class="chart-card" style="height:280px">
+      <div class="chart-title">Ship Class Distribution</div>
+      <canvas id="chart-dist"></canvas>
+    </div>
+    <div class="chart-card" style="height:220px">
+      <div class="chart-title">Detections Over Time</div>
+      <canvas id="chart-time"></canvas>
+    </div>
+  </div>
+
+  <!-- RECORDS -->
+  <div id="records-wrap">
+    <table class="rec-table">
+      <thead><tr>
+        <th>Image</th><th>Class</th><th>Confidence</th><th>Objects</th><th>DateTime</th>
+      </tr></thead>
+      <tbody id="records-body"></tbody>
+    </table>
+  </div>
+
+  <!-- ALERT -->
+  <div id="alert-wrap">
+    <div id="alert-map"></div>
+    <div id="alert-count-badge">
+      <div class="acb-title">⚡ Alerts Sent</div>
+      <div id="alert-sent-count">0</div>
+    </div>
+    <div id="alert-legend">
+      <div class="al-title">India Alert Map</div>
+      <div class="al-row"><div class="al-dot" style="background:#ffcc00;box-shadow:0 0 6px #ffcc00aa"></div>Command Post</div>
+      <div class="al-row"><div class="al-dot" style="background:#ff2222;box-shadow:0 0 6px #ff2222aa"></div>Alert Dispatched</div>
+      <div style="font-size:9px;color:var(--dim);margin-top:6px">Click marker to alert<br>command center</div>
+    </div>
+  </div>
+
+  <!-- MESSAGES -->
+  <div id="msg-wrap">
+    <div class="msg-layout">
+      <!-- Sidebar -->
+      <div class="msg-sidebar">
+        <div class="msg-sidebar-tabs">
+          <div class="mst active" id="mst-inbox" onclick="showMsgTab('inbox')">Inbox</div>
+          <div class="mst" id="mst-sent" onclick="showMsgTab('sent')" style="display:none">Sent</div>
+          <div class="mst" id="mst-compose" onclick="showMsgTab('compose')" style="display:none">Compose</div>
+        </div>
+        <div class="msg-list" id="msg-list">
+          <div class="empty-msg">No messages</div>
+        </div>
+      </div>
+      <!-- Main area -->
+      <div class="msg-main">
+        <div class="msg-main-hdr">
+          <span class="msg-main-title" id="msg-area-title">Inbox</span>
+          <div id="compose-btn-wrap" style="display:none">
+            <button class="btn btn-green" style="width:auto;padding:7px 16px" onclick="showMsgTab('compose')">✏ Compose</button>
+          </div>
+        </div>
+        <div class="msg-body-area">
+          <!-- Read view -->
+          <div id="msg-read-view">
+            <div class="mr-from" id="mr-from">—</div>
+            <div class="mr-meta" id="mr-meta">—</div>
+            <div class="mr-body" id="mr-body">—</div>
+          </div>
+          <!-- Compose -->
+          <div id="msg-compose">
+            <div>
+              <label class="comp-label">To</label>
+              <div id="recipients-list" style="max-height:130px;overflow-y:auto;border:1px solid var(--border);border-radius:3px;padding:6px;background:rgba(0,200,255,.03)">
+                <div style="font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace">Loading recipients...</div>
+              </div>
+            </div>
+            <div>
+              <label class="comp-label">Subject</label>
+              <input class="comp-input" id="comp-subject" placeholder="Subject (optional)"/>
+            </div>
+            <div>
+              <label class="comp-label">Message</label>
+              <textarea class="comp-input" id="comp-body" style="height:150px;resize:vertical" placeholder="Type your message here..."></textarea>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-green" style="width:auto;padding:9px 20px" onclick="sendMessage()">⬆ Send</button>
+              <button class="btn btn-primary" style="width:auto;padding:9px 20px" onclick="sendBroadcast()">📡 Broadcast All</button>
+            </div>
+            <div id="send-status" style="display:none;font-size:11px;color:var(--accent2);font-family:'Share Tech Mono',monospace;padding:6px 0"></div>
+          </div>
+          <!-- Empty state -->
+          <div id="msg-empty" class="empty-msg">
+            Select a message to read,<br/>or compose a new one.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- USERS (admin only) -->
+  <div id="users-wrap">
+    <table class="usr-table">
+      <thead><tr>
+        <th>Name</th><th>Username</th><th>Role</th><th>State</th><th>Email</th><th>Status</th><th>Action</th>
+      </tr></thead>
+      <tbody id="users-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div id="right-panel">
+  <div class="panel-hdr"><span>🚢</span><span class="panel-hdr-title">Detected Ships</span></div>
+  <div id="ship-list">
+    <div class="empty-state">No ships loaded.<br/>Load a date or run pipeline.</div>
+  </div>
+</div>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" onclick="closeLightbox()">
+  <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()"/>
+  <div id="lightbox-caption"></div>
+</div>
+
+<!-- ALERT MODAL -->
+<div id="alert-modal">
+  <div class="am-box">
+    <div id="am-confirm">
+      <div class="am-icon">⚠️</div>
+      <div class="am-title">Command Alert</div>
+      <div class="am-state" id="am-state-name">—</div>
+      <div class="am-msg">Send the Alert to the command center?</div>
+      <div class="am-btns">
+        <button class="am-btn am-btn-yes" onclick="confirmSendAlert()">✔ Yes</button>
+        <button class="am-btn am-btn-no" onclick="closeAlertModal()">✖ No</button>
+      </div>
+    </div>
+    <div id="am-sent">
+      <div class="am-sent-icon">✅</div>
+      <div class="am-sent-title">Message Sent</div>
+      <div class="am-sent-sub" id="am-sent-detail"></div>
+      <button class="am-close-btn" onclick="closeAlertModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// CONFIG & AUTH
+// Dynamic API base — works from any device on the network
+// ══════════════════════════════════════════════════════════════════
+const API = window.location.origin + '/api';
+let CURRENT_USER=null;
+let AUTH_TOKEN=localStorage.getItem('nitin_token');
+
+function authHeaders(){return{'Content-Type':'application/json','X-Auth-Token':AUTH_TOKEN||''};}
+function apiGet(path){return fetch(`${API}${path}`,{headers:authHeaders(),credentials:'include'});}
+function apiPost(path,body){return fetch(`${API}${path}`,{method:'POST',headers:authHeaders(),credentials:'include',body:JSON.stringify(body)});}
+
+async function checkAuth(){
+  if(!AUTH_TOKEN){window.location.href='/login';return;}
+  try{
+    const r=await apiGet('/auth/me');
+    if(!r.ok){localStorage.removeItem('nitin_token');window.location.href='/login';return;}
+    const d=await r.json();
+    CURRENT_USER=d.user;
+    applyRoleUI();
+  }catch(e){window.location.href='/login';}
+}
+
+function applyRoleUI(){
+  const r=CURRENT_USER.role;
+  // Topbar user info
+  document.getElementById('user-avatar').textContent=CURRENT_USER.name[0].toUpperCase();
+  document.getElementById('user-name-top').textContent=CURRENT_USER.name;
+  const roleEl=document.getElementById('user-role-top');
+  roleEl.textContent=r==='admin'?'ADMIN':r==='command_post'?'COMMAND POST':'VIEWER';
+  roleEl.className='user-role role-tag-'+r;
+
+  // Pipeline controls
+  if(r==='admin'){
+    document.getElementById('admin-pipeline-btns').style.display='block';
+    document.getElementById('tab-users').style.display='block';
+  } else {
+    document.getElementById('admin-pipeline-btns').style.display='none';
+    if(r==='viewer') document.getElementById('viewer-pipeline-msg').style.display='block';
+  }
+  // Messaging compose button & sent tab
+  if(r!=='viewer'){
+    document.getElementById('mst-sent').style.display='block';
+    document.getElementById('mst-compose').style.display='block';
+    document.getElementById('compose-btn-wrap').style.display='block';
+  }
+  // Map add panel (all can see, but viewer could add manual markers for reference)
+}
+
+function showUserMenu(){
+  if(confirm(`Logged in as ${CURRENT_USER.name} (${CURRENT_USER.role})\n\nClick OK to log out.`)){
+    doLogout();
+  }
+}
+async function doLogout(){
+  await apiPost('/auth/logout',{});
+  localStorage.removeItem('nitin_token');
+  localStorage.removeItem('nitin_user');
+  window.location.href='/login';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MILITARY CLASSES
+// ══════════════════════════════════════════════════════════════════
+const MILITARY_CLASSES=new Set([
+  'air carrier','destroyer','frigate','amphibious transport dock',
+  'Tarawa-class amphibious assault ship','amphibious assault ship',
+  'command ship','submarine','cruiser','landing craft','combat boat'
+]);
+const isMilitary=cls=>MILITARY_CLASSES.has(cls);
+
+// ══════════════════════════════════════════════════════════════════
+// MAIN MAP
+// ══════════════════════════════════════════════════════════════════
+const map=L.map('map').setView([20,60],3);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  {attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:19}).addTo(map);
+
+function makeIcon(color='#00c8ff'){
+  return L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],
+    html:`<div style="width:30px;height:30px;border-radius:50%;
+      background:radial-gradient(circle,${color}cc 0%,${color}22 70%);
+      border:2px solid ${color};display:flex;align-items:center;justify-content:center;
+      box-shadow:0 0 14px ${color}88;animation:shipPulse 2s ease-in-out infinite">
+      <div style="width:9px;height:9px;border-radius:50%;background:${color}"></div></div>`});
+}
+const sk=document.createElement('style');
+sk.textContent='@keyframes shipPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}';
+document.head.appendChild(sk);
+
+let markers=[],dbRecords=[],chartDist=null,chartTime=null,pollTimer=null;
+
+// ══════════════════════════════════════════════════════════════════
+// CLOCK
+// ══════════════════════════════════════════════════════════════════
+setInterval(()=>document.getElementById('sys-time').textContent=new Date().toLocaleTimeString('en-US',{hour12:false}),1000);
+
+// ══════════════════════════════════════════════════════════════════
+// STATUS
+// ══════════════════════════════════════════════════════════════════
+async function fetchStatus(){
+  try{const r=await apiGet('/status');if(!r.ok)return;const d=await r.json();
+    setDot('mongo',d.mongodb_connected);setDot('model',d.models_loaded);
+    if(d.models_loaded&&document.getElementById('btn-run')) document.getElementById('btn-run').disabled=false;}catch(e){}
+}
+function setDot(n,ok){document.getElementById('dot-'+n).className='dot '+(ok?'ok':'err');}
+
+// ══════════════════════════════════════════════════════════════════
+// PIPELINE (admin only)
+// ══════════════════════════════════════════════════════════════════
+async function loadModels(){
+  addLog('⟳ Loading AI models...','info');
+  const b=document.getElementById('btn-load');b.disabled=true;
+  try{const r=await apiPost('/models/load',{});const d=await r.json();
+    if(r.ok){addLog(`✓ ${d.message} [${d.device||''}]`,'ok');document.getElementById('btn-run').disabled=false;setDot('model',true);}
+    else{addLog(`✗ ${d.error}`,'err');b.disabled=false;}}
+  catch(e){addLog(`✗ ${e.message}`,'err');b.disabled=false;}
+}
+async function runPipeline(){
+  addLog('▶ Starting pipeline...','info');
+  document.getElementById('progress-wrap').style.display='block';
+  document.getElementById('btn-run').disabled=true;
+  try{const r=await apiPost('/pipeline/run',{});const d=await r.json();
+    if(!r.ok){addLog(`✗ ${d.error}`,'err');return;}
+    addLog('✓ Pipeline running','ok');pollPipeline();}catch(e){addLog(`✗ ${e.message}`,'err');}
+}
+function pollPipeline(){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer=setInterval(async()=>{
+    try{const r=await apiGet('/pipeline/status');const d=await r.json();
+      const pct=d.total>0?Math.round((d.progress/d.total)*100):0;
+      document.getElementById('prog-bar').style.width=pct+'%';
+      document.getElementById('prog-pct').textContent=pct+'%';
+      document.getElementById('prog-file').textContent=d.current_file||'—';
+      const box=document.getElementById('log-box');
+      d.log.forEach(line=>{
+        if(!box.dataset.seen) box.dataset.seen='[]';
+        const seen=JSON.parse(box.dataset.seen);
+        if(!seen.includes(line)){seen.push(line);box.dataset.seen=JSON.stringify(seen.slice(-80));
+          addLog(line,line.startsWith('✓')?'ok':line.startsWith('✗')?'err':'');}});
+      if(d.finished){clearInterval(pollTimer);addLog('★ Pipeline finished!','ok');
+        if(document.getElementById('btn-run')) document.getElementById('btn-run').disabled=false;
+        refreshAll();}}catch(e){}},1500);
+}
+function addLog(msg,cls=''){
+  const box=document.getElementById('log-box');
+  const el=document.createElement('div');el.className=cls?'log-'+cls:'';
+  el.textContent=msg;box.appendChild(el);box.scrollTop=box.scrollHeight;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// DATA LOADING
+// ══════════════════════════════════════════════════════════════════
+async function loadCollections(){
+  try{const r=await apiGet('/db/collections');const cols=await r.json();
+    const sel=document.getElementById('date-select');
+    sel.innerHTML='<option value="">— Select Date —</option>';
+    cols.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});}catch(e){}
+}
+async function loadRecords(){
+  const col=document.getElementById('date-select').value;if(!col)return;
+  try{const r=await apiGet(`/db/${col}`);dbRecords=await r.json();
+    renderRecordsTable(dbRecords);renderShipList(dbRecords);plotDbShipsOnMap(dbRecords);
+    const mc=dbRecords.filter(r=>isMilitary(r.ship_class)).length;
+    document.getElementById('t-mil').textContent=mc;
+    addLog(`✓ Loaded ${dbRecords.length} records from ${col}`,'ok');}
+  catch(e){addLog(`✗ ${e.message}`,'err');}
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RECORDS TABLE
+// ══════════════════════════════════════════════════════════════════
+function renderRecordsTable(records){
+  const tb=document.getElementById('records-body');tb.innerHTML='';
+  records.forEach(r=>{
+    const conf=r.classification_confidence||0;
+    const cc=conf>=.8?'conf-high':conf>=.5?'conf-med':'conf-low';
+    const dt=r.date_time?new Date(r.date_time).toLocaleString():'—';
+    const mil=isMilitary(r.ship_class);
+    const clsBadge=mil?`<span class="badge badge-mil">⚠ ${r.ship_class||'—'}</span>`
+                      :`<span class="badge conf-high">${r.ship_class||'—'}</span>`;
+    let imgCell;
+    if(r.image_name){
+      const iu=`${API}/images/ship/${encodeURIComponent(r.image_name)}`;
+      imgCell=`<img class="ship-thumb" src="${iu}" alt="${r.image_name}"
+        onerror="this.outerHTML='<div class=\\'ship-thumb-ph\\'>🚢</div>'"
+        onclick="openLightbox('${iu}','${r.image_name} — ${r.ship_class||''}')"/>`;
+    } else {imgCell='<div class="ship-thumb-ph">🚢</div>';}
+    const tr=document.createElement('tr');if(mil) tr.className='mil-row';
+    tr.innerHTML=`<td>${imgCell}</td><td>${clsBadge}</td>
+      <td><span class="badge ${cc}">${(conf*100).toFixed(1)}%</span></td>
+      <td style="text-align:center;font-family:'Share Tech Mono',monospace">${r.number_of_objects||1}</td>
+      <td style="font-size:11px;color:var(--dim)">${dt}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+// ── LIGHTBOX ──
+function openLightbox(url,cap){
+  document.getElementById('lightbox-img').src=url;
+  document.getElementById('lightbox-caption').textContent=cap;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('open');}
+
+// ══════════════════════════════════════════════════════════════════
+// SHIP LIST (right panel)
+// ══════════════════════════════════════════════════════════════════
+function renderShipList(records){
+  const list=document.getElementById('ship-list');
+  if(!records.length){list.innerHTML='<div class="empty-state">No ships in this collection.</div>';return;}
+  list.innerHTML=records.map((r,i)=>{
+    const mil=isMilitary(r.ship_class);
+    return`<div class="ship-card db-record${mil?' mil-card':''}" onclick="focusShipCard(${i})">
+      <div class="sc-name db${mil?' mil':''}">${r.ship_class||'Unknown'}</div>
+      ${mil?'<div class="mil-badge-sm">⚠ MILITARY</div>':''}
+      <div class="sc-row"><span>Image</span><span class="sc-val">${r.image_name||'—'}</span></div>
+      <div class="sc-row"><span>Confidence</span><span class="sc-val">${r.classification_confidence?((r.classification_confidence)*100).toFixed(1)+'%':'—'}</span></div>
+      <div class="sc-row"><span>Objects</span><span class="sc-val">${r.number_of_objects||1}</span></div>
+    </div>`;
+  }).join('');
+}
+function focusShipCard(i){
+  const m=markers.find(m=>m.id==='db-'+i);
+  if(m){map.setView(m.marker.getLatLng(),7);m.marker.openPopup();switchTab('map');}
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MAP MARKERS
+// ══════════════════════════════════════════════════════════════════
+function plotDbShipsOnMap(records){
+  markers=markers.filter(m=>{if(m.id&&m.id.startsWith('db-')){m.marker.remove();return false;}return true;});
+  const withGPS=records.filter(r=>r.latitude&&r.longitude);
+  const noGPS  =records.filter(r=>!r.latitude||!r.longitude);
+  withGPS.forEach((r,i)=>addMapMarker(r.latitude,r.longitude,r.ship_class||'Unknown',r,'db-'+i,isMilitary(r.ship_class)?'#ff2222':'#00ffb3'));
+  const BL=20,BLo=65;
+  noGPS.forEach((r,i)=>{
+    const lat=BL+(Math.floor(i/5)*2)+(Math.random()-.5)*1.2;
+    const lon=BLo+(i%5)*2.5+(Math.random()-.5)*1.2;
+    addMapMarker(lat,lon,r.ship_class||'Unknown',r,'db-'+i,isMilitary(r.ship_class)?'#ff2222':'#00ffb3');
+  });
+  document.getElementById('ov-count').textContent=markers.length;
+}
+function addMapMarker(lat,lon,name,data,id,color='#00c8ff'){
+  const mil=isMilitary(data.ship_class||name);
+  const marker=L.marker([lat,lon],{icon:makeIcon(color)}).addTo(map);
+  const conf=data.classification_confidence?(data.classification_confidence*100).toFixed(1)+'%':'—';
+  const dt=data.date_time?new Date(data.date_time).toLocaleString():'—';
+  marker.bindPopup(`
+    <div class="pop-name${mil?' mil':''}"><span class="pulse-dot${mil?' mil':''}"></span>${name}${mil?' ⚠':''}</div>
+    <div class="pop-row"><span class="pop-key">Image</span><span class="pop-val">${data.image_name||data.name||'—'}</span></div>
+    <div class="pop-row"><span class="pop-key">Confidence</span><span class="pop-val">${conf}</span></div>
+    <div class="pop-row"><span class="pop-key">Objects</span><span class="pop-val">${data.number_of_objects||1}</span></div>
+    <div class="pop-row"><span class="pop-key">Date/Time</span><span class="pop-val">${dt}</span></div>
+    <div class="pop-row"><span class="pop-key">Coordinates</span><span class="pop-val">${lat.toFixed(4)}°, ${lon.toFixed(4)}°</span></div>
+  `);
+  markers.push({id,marker,data});
+  document.getElementById('ov-count').textContent=markers.length;
+}
+function addManualMarker(){
+  const lat=parseFloat(document.getElementById('m-lat').value);
+  const lon=parseFloat(document.getElementById('m-lon').value);
+  const name=document.getElementById('m-name').value||'Manual Entry';
+  const type=document.getElementById('m-type').value||'Unknown';
+  if(isNaN(lat)||isNaN(lon)||lat<-90||lat>90||lon<-180||lon>180){addLog('✗ Invalid coordinates','err');return;}
+  const id='manual-'+Date.now();
+  const mil=isMilitary(type);
+  addMapMarker(lat,lon,name,{image_name:name,ship_class:type,date_time:new Date().toISOString()},id,mil?'#ff2222':'#00c8ff');
+  const card=document.createElement('div');
+  card.className='ship-card'+(mil?' mil-card':'');
+  card.innerHTML=`<div class="sc-name${mil?' mil':''}">${name}</div>
+    ${mil?'<div class="mil-badge-sm">⚠ MILITARY</div>':''}
+    <div class="sc-row"><span>Type</span><span class="sc-val">${type}</span></div>
+    <div class="sc-row"><span>Lat/Lon</span><span class="sc-val">${lat.toFixed(4)}, ${lon.toFixed(4)}</span></div>`;
+  card.onclick=()=>{const m=markers.find(m=>m.id===id);if(m){map.setView(m.marker.getLatLng(),7);m.marker.openPopup();}};
+  const list=document.getElementById('ship-list');
+  if(list.querySelector('.empty-state')) list.innerHTML='';
+  list.prepend(card);
+  map.setView([lat,lon],6);
+  ['m-lat','m-lon','m-name','m-type'].forEach(i=>document.getElementById(i).value='');
+  addLog(`✓ Marker: ${name}${mil?' [MILITARY]':''}`,mil?'err':'ok');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ANALYTICS
+// ══════════════════════════════════════════════════════════════════
+async function loadAnalytics(){
+  try{
+    const r=await apiGet('/stats');const d=await r.json();
+    document.getElementById('t-ships').textContent=d.total_ships||0;
+    const dist=d.class_distribution||{};const labels=Object.keys(dist);const values=Object.values(dist);
+    const colours=labels.map((_,i)=>`hsl(${(i*37)%360},80%,60%)`);
+    if(chartDist) chartDist.destroy();
+    chartDist=new Chart(document.getElementById('chart-dist'),{
+      type:'bar',data:{labels,datasets:[{label:'Count',data:values,
+        backgroundColor:colours.map(c=>c.replace('hsl(','hsla(').replace(')',',0.7)')),
+        borderColor:colours,borderWidth:1,borderRadius:2}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#4a6380',font:{size:9}},grid:{color:'rgba(0,200,255,0.05)'}},
+          y:{ticks:{color:'#4a6380',font:{size:9}},grid:{color:'rgba(0,200,255,0.08)'}}}}});
+    const cols=await(await apiGet('/db/collections')).json();
+    const td=await Promise.all(cols.slice(0,10).map(async c=>{
+      const recs=await(await apiGet(`/db/${c}`)).json();
+      return{date:c,count:recs.reduce((s,r)=>s+(r.number_of_objects||1),0)};
+    }));td.reverse();
+    if(chartTime) chartTime.destroy();
+    chartTime=new Chart(document.getElementById('chart-time'),{
+      type:'line',data:{labels:td.map(t=>t.date),datasets:[{label:'Ships',data:td.map(t=>t.count),
+        borderColor:'#00c8ff',backgroundColor:'rgba(0,200,255,0.1)',tension:.4,fill:true,
+        pointBackgroundColor:'#00c8ff',pointRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#4a6380',font:{size:9}},grid:{color:'rgba(0,200,255,0.05)'}},
+          y:{ticks:{color:'#4a6380',font:{size:9}},grid:{color:'rgba(0,200,255,0.08)'}}}}});}
+  catch(e){addLog(`✗ Analytics: ${e.message}`,'err');}
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ALERT MAP
+// ══════════════════════════════════════════════════════════════════
+const INDIA_STATES=[
+  {state:'Andhra Pradesh',lat:15.9129,lon:79.7400},{state:'Arunachal Pradesh',lat:28.2180,lon:94.7278},
+  {state:'Assam',lat:26.2006,lon:92.9376},{state:'Bihar',lat:25.0961,lon:85.3131},
+  {state:'Chhattisgarh',lat:21.2787,lon:81.8661},{state:'Goa',lat:15.2993,lon:74.1240},
+  {state:'Gujarat',lat:22.2587,lon:71.1924},{state:'Haryana',lat:29.0588,lon:76.0856},
+  {state:'Himachal Pradesh',lat:31.1048,lon:77.1734},{state:'Jharkhand',lat:23.6102,lon:85.2799},
+  {state:'Karnataka',lat:15.3173,lon:75.7139},{state:'Kerala',lat:10.8505,lon:76.2711},
+  {state:'Madhya Pradesh',lat:22.9734,lon:78.6569},{state:'Maharashtra',lat:19.7515,lon:75.7139},
+  {state:'Manipur',lat:24.6637,lon:93.9063},{state:'Meghalaya',lat:25.4670,lon:91.3662},
+  {state:'Mizoram',lat:23.1645,lon:92.9376},{state:'Nagaland',lat:26.1584,lon:94.5624},
+  {state:'Odisha',lat:20.9517,lon:85.0985},{state:'Punjab',lat:31.1471,lon:75.3412},
+  {state:'Rajasthan',lat:27.0238,lon:74.2179},{state:'Sikkim',lat:27.5330,lon:88.5122},
+  {state:'Tamil Nadu',lat:11.1271,lon:78.6569},{state:'Telangana',lat:17.1232,lon:79.2088},
+  {state:'Tripura',lat:23.9408,lon:91.9882},{state:'Uttar Pradesh',lat:26.8467,lon:80.9462},
+  {state:'Uttarakhand',lat:30.0668,lon:79.0193},{state:'West Bengal',lat:22.9868,lon:87.8550},
+  {state:'Delhi',lat:28.7041,lon:77.1025},{state:'Jammu & Kashmir',lat:33.7782,lon:76.5762},
+  {state:'Ladakh',lat:34.1526,lon:77.5770},{state:'Andaman & Nicobar',lat:11.7401,lon:92.6586},
+  {state:'Chandigarh',lat:30.7333,lon:76.7794},{state:'Lakshadweep',lat:10.5667,lon:72.6417},
+  {state:'Puducherry',lat:11.9416,lon:79.8083},
+];
+let alertSentCount=0,currentAlertState='';
+let alertMarkers={},alertMapInit=false,alertLeafMap=null;
+
+function makeAlertIcon(color,sent){
+  const anim=!sent?'animation:alertPulse 1.8s ease-in-out infinite':'';
+  return L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,13],
+    html:`<div style="width:26px;height:26px;border-radius:50%;
+      background:radial-gradient(circle,${color}ee 0%,${color}44 70%);
+      border:2px solid ${color};display:flex;align-items:center;justify-content:center;
+      box-shadow:0 0 12px ${color}88;${anim}">
+      <div style="width:8px;height:8px;border-radius:50%;background:${color}"></div></div>`});
+}
+const ap=document.createElement('style');
+ap.textContent='@keyframes alertPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}';
+document.head.appendChild(ap);
+
+function initAlertMap(){
+  if(alertMapInit) return;alertMapInit=true;
+  alertLeafMap=L.map('alert-map').setView([22.5,82.5],5);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    {attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:18}).addTo(alertLeafMap);
+  const ts=document.createElement('style');
+  ts.textContent=`.leaflet-tooltip{background:rgba(4,8,16,.95)!important;border:1px solid #ffcc0066!important;
+    color:#ffcc00!important;font-family:'Share Tech Mono',monospace!important;font-size:10px!important;
+    border-radius:3px!important;padding:3px 8px!important}.leaflet-tooltip::before{border-top-color:#ffcc0066!important}`;
+  document.head.appendChild(ts);
+  INDIA_STATES.forEach(s=>{
+    const m=L.marker([s.lat,s.lon],{icon:makeAlertIcon('#ffcc00',false)}).addTo(alertLeafMap);
+    m.bindTooltip(s.state,{permanent:false,direction:'top'});
+    m.on('click',()=>openAlertModal(s.state));
+    alertMarkers[s.state]={marker:m,sent:false};
+  });
+}
+function openAlertModal(stateName){
+  currentAlertState=stateName;
+  document.getElementById('am-state-name').textContent='📍 '+stateName;
+  document.getElementById('am-confirm').style.display='block';
+  document.getElementById('am-sent').style.display='none';
+  document.getElementById('alert-modal').classList.add('open');
+}
+function confirmSendAlert(){
+  const entry=alertMarkers[currentAlertState];
+  if(entry&&!entry.sent){entry.sent=true;entry.marker.setIcon(makeAlertIcon('#ff2222',true));
+    alertSentCount++;document.getElementById('alert-sent-count').textContent=alertSentCount;}
+  document.getElementById('am-confirm').style.display='none';
+  document.getElementById('am-sent').style.display='block';
+  document.getElementById('am-sent-detail').textContent=`Alert → ${currentAlertState} Command Center\n${new Date().toLocaleString()}`;
+  addLog(`⚡ Alert sent → ${currentAlertState}`,'err');
+}
+function closeAlertModal(){document.getElementById('alert-modal').classList.remove('open');currentAlertState='';}
+
+// ══════════════════════════════════════════════════════════════════
+// MESSAGING
+// ══════════════════════════════════════════════════════════════════
+let currentMsgTab='inbox';
+let currentMsgId=null;
+let recipientUsers=[];
+
+async function loadMessages(){
+  try{
+    // Unread count
+    const cr=await apiGet('/messages/unread_count');
+    const cd=await cr.json();
+    const cnt=cd.count||0;
+    const badge=document.getElementById('msg-tab-badge');
+    const bellBadge=document.getElementById('bell-badge');
+    if(cnt>0){badge.textContent=cnt;badge.style.display='inline-flex';
+      bellBadge.textContent=cnt;bellBadge.className='bell-badge show';}
+    else{badge.style.display='none';bellBadge.className='bell-badge';}
+
+    if(currentMsgTab==='inbox') await loadInbox();
+    if(currentMsgTab==='sent') await loadSent();
+  }catch(e){}
+}
+async function loadInbox(){
+  const r=await apiGet('/messages/inbox');const msgs=await r.json();
+  renderMsgList(msgs,'inbox');
+}
+async function loadSent(){
+  const r=await apiGet('/messages/sent');const msgs=await r.json();
+  renderMsgList(msgs,'sent');
+}
+function renderMsgList(msgs,type){
+  const list=document.getElementById('msg-list');
+  if(!msgs.length){list.innerHTML='<div class="empty-msg">No messages.</div>';return;}
+  list.innerHTML=msgs.map(m=>{
+    const unread=type==='inbox'&&!(m.read_by||[]).includes(CURRENT_USER.id);
+    const time=new Date(m.created_at).toLocaleDateString();
+    const from=type==='inbox'?m.sender_name:`To: ${m.recipients.length} recipient(s)`;
+    return`<div class="msg-item${unread?' unread':''}" onclick="openMessage('${m._id}','${type}')">
+      <div class="msg-item-from">${from}</div>
+      <div class="msg-item-sub">${m.subject||m.body.substring(0,40)}</div>
+      <div class="msg-item-time">${time}</div>
+    </div>`;
+  }).join('');
+}
+async function openMessage(msgId,type){
+  currentMsgId=msgId;
+  document.getElementById('msg-read-view').classList.add('active');
+  document.getElementById('msg-compose').classList.remove('active');
+  document.getElementById('msg-empty').style.display='none';
+
+  // Mark as read
+  if(type==='inbox') await apiPost(`/messages/${msgId}/read`,{});
+
+  // Find in local cache or fetch
+  const allMsgs=type==='inbox'
+    ? await(await apiGet('/messages/inbox')).json()
+    : await(await apiGet('/messages/sent')).json();
+  const msg=allMsgs.find(m=>m._id===msgId);
+  if(!msg) return;
+
+  document.getElementById('mr-from').textContent=
+    type==='inbox'?`From: ${msg.sender_name} (${msg.sender_role})`:
+    `Sent to ${msg.recipients.length} recipient(s)`;
+  document.getElementById('mr-meta').innerHTML=
+    `Subject: ${msg.subject||'(no subject)'}\nDate: ${new Date(msg.created_at).toLocaleString()}\n`+
+    (msg.is_broadcast?'Type: Broadcast to all':'');
+  document.getElementById('mr-body').textContent=msg.body;
+  await loadMessages();
+}
+
+function showMsgTab(tab){
+  currentMsgTab=tab;
+  document.getElementById('mst-inbox').classList.toggle('active',tab==='inbox');
+  if(document.getElementById('mst-sent')) document.getElementById('mst-sent').classList.toggle('active',tab==='sent');
+  if(document.getElementById('mst-compose')) document.getElementById('mst-compose').classList.toggle('active',tab==='compose');
+  document.getElementById('msg-area-title').textContent=tab==='inbox'?'Inbox':tab==='sent'?'Sent':'Compose Message';
+  document.getElementById('msg-read-view').classList.remove('active');
+  document.getElementById('msg-compose').classList.remove('active');
+  document.getElementById('msg-empty').style.display='none';
+
+  if(tab==='compose'){
+    document.getElementById('msg-compose').classList.add('active');
+    loadRecipients();
+  } else if(tab==='inbox'){
+    loadInbox();document.getElementById('msg-empty').style.display='block';
+  } else if(tab==='sent'){
+    loadSent();document.getElementById('msg-empty').style.display='block';
+  }
+}
+
+async function loadRecipients(){
+  try{
+    const r=await apiGet('/users/recipients');recipientUsers=await r.json();
+    const container=document.getElementById('recipients-list');
+    if(!recipientUsers.length){container.innerHTML='<div style="font-size:11px;color:var(--dim)">No recipients available.</div>';return;}
+    container.innerHTML=recipientUsers.map(u=>`
+      <label class="comp-chk-item">
+        <input type="checkbox" value="${u._id}" name="rec-chk"/>
+        <span style="font-size:11px"><b style="color:${u.role==='admin'?'var(--accent)':u.role==='command_post'?'var(--accent2)':'var(--warn)'}">${u.name}</b>
+        <span style="color:var(--dim)"> (${u.role}${u.state?' · '+u.state:''})</span></span>
+      </label>`).join('');
+  }catch(e){}
+}
+
+async function sendMessage(){
+  const body=document.getElementById('comp-body').value.trim();
+  const subject=document.getElementById('comp-subject').value.trim();
+  const checked=[...document.querySelectorAll('input[name="rec-chk"]:checked')].map(i=>i.value);
+  if(!body){showSendStatus('Message body is required.','err');return;}
+  if(!checked.length){showSendStatus('Select at least one recipient, or use Broadcast.','err');return;}
+  try{
+    const r=await apiPost('/messages/send',{body,subject,recipients:checked});
+    const d=await r.json();
+    if(r.ok){showSendStatus(`✓ Sent to ${d.sent_to} recipient(s).`,'ok');
+      document.getElementById('comp-body').value='';document.getElementById('comp-subject').value='';
+      document.querySelectorAll('input[name="rec-chk"]').forEach(c=>c.checked=false);}
+    else showSendStatus(d.error||'Failed to send.','err');
+  }catch(e){showSendStatus('Send error.','err');}
+}
+async function sendBroadcast(){
+  const body=document.getElementById('comp-body').value.trim();
+  const subject=document.getElementById('comp-subject').value.trim();
+  if(!body){showSendStatus('Message body is required.','err');return;}
+  try{
+    const r=await apiPost('/messages/send',{body,subject,recipients:[]});
+    const d=await r.json();
+    if(r.ok){showSendStatus(`✓ Broadcast sent to ${d.sent_to} users.`,'ok');
+      document.getElementById('comp-body').value='';document.getElementById('comp-subject').value='';}
+    else showSendStatus(d.error||'Failed.','err');
+  }catch(e){showSendStatus('Error.','err');}
+}
+function showSendStatus(msg,type){
+  const el=document.getElementById('send-status');
+  el.textContent=msg;el.style.display='block';
+  el.style.color=type==='ok'?'var(--accent2)':'var(--accent3)';
+  setTimeout(()=>el.style.display='none',4000);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// USER MANAGEMENT (admin)
+// ══════════════════════════════════════════════════════════════════
+async function loadUsers(){
+  if(CURRENT_USER.role!=='admin') return;
+  try{
+    const r=await apiGet('/users');const users=await r.json();
+    const tb=document.getElementById('users-body');tb.innerHTML='';
+    users.forEach(u=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td><b>${u.name}</b></td>
+        <td style="font-family:'Share Tech Mono',monospace;font-size:11px">${u.username}</td>
+        <td><span class="role-b rb-${u.role}">${u.role==='command_post'?'CMD POST':u.role.toUpperCase()}</span></td>
+        <td style="font-size:11px;color:var(--dim)">${u.state||'—'}</td>
+        <td style="font-size:11px;color:var(--dim)">${u.email}</td>
+        <td><span style="font-size:10px;color:${u.active?'var(--accent2)':'var(--accent3)'}">${u.active?'Active':'Disabled'}</span></td>
+        <td><button class="toggle-btn ${u.active?'tb-active':'tb-inactive'}" onclick="toggleUser('${u._id}',this)">${u.active?'Disable':'Enable'}</button></td>`;
+      tb.appendChild(tr);
+    });
+  }catch(e){}
+}
+async function toggleUser(uid,btn){
+  try{
+    const r=await apiPost(`/users/${uid}/toggle`,{});const d=await r.json();
+    btn.className='toggle-btn '+(d.active?'tb-active':'tb-inactive');
+    btn.textContent=d.active?'Disable':'Enable';
+    btn.closest('tr').cells[5].innerHTML=`<span style="font-size:10px;color:${d.active?'var(--accent2)':'var(--accent3)'}">${d.active?'Active':'Disabled'}</span>`;
+  }catch(e){}
+}
+
+// ══════════════════════════════════════════════════════════════════
+// TAB SWITCH
+// ══════════════════════════════════════════════════════════════════
+const TABS=['map','chart','records','alert','messages','users'];
+function switchTab(tab){
+  TABS.forEach(t=>{
+    const el=document.getElementById(t+'-wrap');if(el) el.classList.toggle('active',t===tab);
+  });
+  document.querySelectorAll('.tab').forEach(t=>{
+    const tabs=TABS;
+    t.classList.toggle('active',tabs[Array.from(document.querySelectorAll('.tab')).indexOf(t)]===tab);
+  });
+  // Simpler tab highlighting
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.classList.remove('active');
+    if(t.textContent.toLowerCase().includes(tab.substring(0,4).toLowerCase())&&!t.classList.contains('active'))
+      t.classList.add('active');
+  });
+  // Fix overlap for similar names
+  if(tab==='map'){
+    document.querySelectorAll('.tab').forEach(t=>{if(t.textContent.includes('🗺')) t.classList.add('active'); else t.classList.remove('active');});
+  }
+  if(tab==='messages'){
+    document.querySelectorAll('.tab').forEach(t=>{if(t.textContent.includes('📨')) t.classList.add('active'); else t.classList.remove('active');});
+    loadMessages();
+    showMsgTab('inbox');
+  }
+  if(tab==='chart'){document.querySelectorAll('.tab').forEach(t=>{if(t.textContent.includes('📊')) t.classList.add('active'); else t.classList.remove('active');});loadAnalytics();}
+  if(tab==='records'){document.querySelectorAll('.tab').forEach(t=>{if(t.textContent.includes('📂')) t.classList.add('active'); else t.classList.remove('active');});}
+  if(tab==='alert'){
+    document.querySelectorAll('.tab').forEach(t=>{if(t.textContent.includes('🚨')) t.classList.add('active'); else t.classList.remove('active');});
+    setTimeout(()=>{initAlertMap();if(alertLeafMap) alertLeafMap.invalidateSize();},60);
+  }
+  if(tab==='users'){
+    document.querySelectorAll('.tab').forEach(t=>{if(t.textContent.includes('👥')) t.classList.add('active'); else t.classList.remove('active');});
+    loadUsers();
+  }
+  if(tab==='map') setTimeout(()=>map.invalidateSize(),50);
+
+  // Show/hide wraps cleanly
+  document.getElementById('map-wrap').classList.toggle('active',tab==='map');
+  document.getElementById('chart-wrap').classList.toggle('active',tab==='chart');
+  document.getElementById('records-wrap').classList.toggle('active',tab==='records');
+  document.getElementById('alert-wrap').classList.toggle('active',tab==='alert');
+  document.getElementById('msg-wrap').classList.toggle('active',tab==='messages');
+  document.getElementById('users-wrap').classList.toggle('active',tab==='users');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// REFRESH ALL
+// ══════════════════════════════════════════════════════════════════
+async function refreshAll(){
+  await fetchStatus();await loadCollections();await loadAnalytics();
+  await loadMessages();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+(async()=>{
+  await checkAuth();
+  addLog('System initialising...','info');
+  await refreshAll();
+  addLog(`✓ Welcome, ${CURRENT_USER.name} [${CURRENT_USER.role}]`,'ok');
+  const sel=document.getElementById('date-select');
+  if(sel.options.length>1){sel.selectedIndex=1;loadRecords();}
+  // Poll messages every 30s
+  setInterval(loadMessages,30000);
+  setInterval(fetchStatus,15000);
+})();
+</script>
+</body>
+</html>
