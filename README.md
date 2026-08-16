@@ -25,7 +25,7 @@
 
 NITIN is an end-to-end naval surveillance platform that ingests satellite/imagery files, detects ships with a YOLO object detector, classifies each detection into one of **23 vessel classes** using a ConvNeXT-Large backbone, and visualizes everything on a live tactical dashboard. A built-in messaging system and India-state alert map let command posts coordinate responses to military-class detections in real time.
 
-> Built as a final-year / capstone AI project — designed to look and feel like a real naval command console.
+> Built as a pre-final-year / capstone AI project — designed to look and feel like a real naval command console.
 
 ---
 
